@@ -1,6 +1,6 @@
-const { Schema, model } = require("mongoose");
+const mongoose = require("mongoose");
 
-const taskSchema = new Schema(
+const taskSchema = new mongoose.Schema(
   {
     title: {
       type: String,
@@ -22,7 +22,7 @@ const taskSchema = new Schema(
       default: "pending",
     },
     assignee: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
     },
     dueDate: {
@@ -32,6 +32,5 @@ const taskSchema = new Schema(
   { timestamps: true }
 );
 
-const Task = model("Task", taskSchema);
-
-module.exports = Task;
+const taskModel = mongoose.model("Task", taskSchema);
+module.exports = taskModel;
