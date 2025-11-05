@@ -1,51 +1,46 @@
-const Task = require("../models/Task");
+const taskModel = require("../models/Task");
 
-// @desc    Create new task
-// @route   POST /api/tasks
-exports.createTask = async (req, res) => {
+createTask = async (req, res) => {
   try {
-    const task = await Task.create(req.body);
-    res.status(201).json({ message: "Task Created", task });
+    const task = await taskModel.create(req.body);
+    res
+      .status(201)
+      .json({ success: true, message: "Task Created", task });
   } catch (error) {
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ success: false, error: error.message });
   }
 };
 
-// @desc    Get all tasks
-// @route   GET /api/tasks
-exports.getAllTasks = async (req, res) => {
+getAllTasks = async (req, res) => {
   try {
-    const tasks = await Task.find().populate("assignee", "name email");
-    res.status(200).json({ success: true, count: tasks.length, data: tasks });
+    const tasks = await taskModel.find().populate("assignee", "name email");
+    res.status(200).json({ success: true, count: tasks.length, tasks });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// @desc    Get single task by ID
-// @route   GET /api/tasks/:id
-exports.getTaskById = async (req, res) => {
+getTaskById = async (req, res) => {
   try {
-    const task = await Task.findById(req.params.id).populate(
-      "assignee",
-      "name email"
-    );
+    const task = await taskModel
+      .findById(req.params.id)
+      .populate("assignee", "name email");
 
     if (!task) {
-      return res.status(404).json({ message: "Task not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Task not found" });
     }
 
-    res.status(200).json({ message: "Task found", task });
+    res.status(200).json({ success: true, task });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
-// @desc    Update a task
-// @route   PUT /api/tasks/:id
-exports.updateTask = async (req, res) => {
+updateTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndUpdate(req.params.id, req.body, {
+    const task = await taskModel.findByIdAndUpdate(req.params.id, req.body, {
       new: true,
       runValidators: true,
     });
@@ -56,17 +51,15 @@ exports.updateTask = async (req, res) => {
         .json({ success: false, message: "Task not found" });
     }
 
-    res.status(200).json({ success: true, data: task });
+    res.status(200).json({ success: true, task });
   } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
+    res.status(400).json({ success: false, error: error.message });
   }
 };
 
-// @desc    Delete a task
-// @route   DELETE /api/tasks/:id
-exports.deleteTask = async (req, res) => {
+deleteTask = async (req, res) => {
   try {
-    const task = await Task.findByIdAndDelete(req.params.id);
+    const task = await taskModel.findByIdAndDelete(req.params.id);
 
     if (!task) {
       return res
@@ -76,6 +69,14 @@ exports.deleteTask = async (req, res) => {
 
     res.status(200).json({ success: true, message: "Task deleted" });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
+};
+
+module.exports = {
+  createTask,
+  getAllTasks,
+  getTaskById,
+  updateTask,
+  deleteTask,
 };
