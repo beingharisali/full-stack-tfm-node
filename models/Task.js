@@ -25,6 +25,16 @@ const taskSchema = new Schema(
       type: Schema.Types.ObjectId,
       ref: "User",
     },
+    assigneeName: {
+      type: String,
+      trim: true,
+    },
+    assigneeEmail: {
+      type: String,
+      trim: true,
+      lowercase: true,
+      match: [/.+@.+\..+/, "Please enter a valid email address"],
+    },
     dueDate: {
       type: Date,
     },
