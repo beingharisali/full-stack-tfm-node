@@ -4,6 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const authRoutes = require("./routes/authRoutes");
 const taskRoutes = require("./routes/taskRoutes");
+const notificationRoutes = require("./routes/notificationRoutes");
 const app = express();
 const cors = require("cors");
 
@@ -28,6 +29,7 @@ app.use(express.json());
 app.use(cors({}));
 app.use("/api/auth", authRoutes);
 app.use("/api/task", taskRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use(notFound);
 
@@ -39,6 +41,11 @@ io.on("connection", (socket) => {
 	socket.on("join", (userId) => {
 		socket.join(userId);
 		console.log(`User ${userId} joined room`);
+	});
+
+	socket.on("leave", (userId) => {
+		socket.leave(userId);
+		console.log(`User ${userId} left room`);
 	});
 
 	socket.on("message", (data) => {
