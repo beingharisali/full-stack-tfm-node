@@ -4,6 +4,7 @@ const http = require("http");
 const { Server } = require("socket.io");
 const authRoutes = require("./routes/authRoutes");
 const taskRoutes = require("./routes/taskRoutes");
+const workspaceRoutes = require("./routes/workspaceRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const app = express();
 const cors = require("cors");
@@ -29,6 +30,7 @@ app.use(express.json());
 app.use(cors({}));
 app.use("/api/auth", authRoutes);
 app.use("/api/task", taskRoutes);
+app.use("/api/workspace", workspaceRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 app.use(notFound);
