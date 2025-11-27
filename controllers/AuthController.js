@@ -64,4 +64,77 @@ login = async (req, res) => {
 	}
 };
 
-module.exports = { register, login };
+// Get user profile
+getProfile = async (req, res) => {
+	try {
+		const user = await User.findById(req.user.id).select("-password");
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		}
+		res.json({ user });
+	} catch (error) {
+		res.status(500).json({ message: "Server error" });
+	}
+};
+
+// Update user profile
+updateProfile = async (req, res) => {
+	try {
+		const { firstName, lastName, email, password } = req.body;
+		
+		// Build user object
+		const userFields = {};
+		if (firstName) userFields.firstName = firstName;
+		if (lastName) userFields.lastName = lastName;
+		if (email) userFields.email = email;
+		
+		// If password is being updated, hash it
+		if (password) {
+			const salt = await bcrypt.genSalt(10);
+			userFields.password = await bcrypt.hash(password, salt);
+		}
+		
+		let user = await User.findById(req.user.id);
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		}
+		
+		// Check if email is being changed and if it already exists
+		if (email && email !== user.email) {
+			const existingUser = await User.findOne({ email });
+			if (existingUser) {
+				return res.status(400).json({ message: "Email already exists" });
+			}
+		}
+		
+		user = await User.findByIdAndUpdate(
+			req.user.id,
+			{ $set: userFields },
+			{ new: true }
+		).select("-password");
+		
+		res.json({ user });
+	} catch (error) {
+		console.error(error.message);
+		res.status(500).json({ message: "Server error" });
+	}
+};
+
+// Get all users (admin only)
+getAllUsers = async (req, res) => {
+	try {
+		// Only allow admin to access this endpoint
+		if (req.user.role !== "admin") {
+			return res.status(403).json({ message: "Access denied" });
+		}
+		
+		// Get all users except the current admin, and exclude passwords
+		const users = await User.find({ _id: { $ne: req.user.id } }).select("-password");
+		res.json({ users });
+	} catch (error) {
+		console.error(error.message);
+		res.status(500).json({ message: "Server error" });
+	}
+};
+
+module.exports = { register, login, getProfile, updateProfile, getAllUsers };
