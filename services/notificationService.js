@@ -1,4 +1,5 @@
 const notificationModel = require("../models/Notification");
+const userModel = require("../models/User");
 
 const createNotification = async (recipientId, type, taskId, message, metadata = {}) => {
   try {
@@ -23,33 +24,75 @@ const emitNotification = (io, userId, notification) => {
 };
 
 const notifyTaskAssigned = async (io, task, assignedBy = "System") => {
-  if (!task.assignee) return;
+  if (task.assignee) {
+    const message = `You have been assigned a new task: "${task.title}"`;
+    const notification = await createNotification(
+      task.assignee,
+      "task_assigned",
+      task._id,
+      message,
+      {
+        taskTitle: task.title,
+        assignedBy,
+      }
+    );
 
-  const message = `You have been assigned a new task: "${task.title}"`;
-  const notification = await createNotification(
-    task.assignee,
-    "task_assigned",
-    task._id,
-    message,
-    {
-      taskTitle: task.title,
-      assignedBy,
+    if (notification) {
+      emitNotification(io, task.assignee, notification);
     }
-  );
 
-  if (notification) {
-    emitNotification(io, task.assignee, notification);
+    return notification;
   }
+  
+  if (task.assigneeEmail) {
+    try {
+      const user = await userModel.findOne({ email: task.assigneeEmail });
+      if (user) {
+        const message = `You have been assigned a new task: "${task.title}"`;
+        const notification = await createNotification(
+          user._id,
+          "task_assigned",
+          task._id,
+          message,
+          {
+            taskTitle: task.title,
+            assignedBy,
+          }
+        );
 
-  return notification;
+        if (notification) {
+          emitNotification(io, user._id, notification);
+        }
+
+        return notification;
+      }
+    } catch (error) {
+      console.error("Error finding user by email for notification:", error);
+    }
+  }
+  
+  return null;
 };
 
 const notifyTaskUpdated = async (io, task, previousStatus, updatedBy = "System") => {
-  if (!task.assignee) return;
+  let recipientId = task.assignee;
+  
+  if (!recipientId && task.assigneeEmail) {
+    try {
+      const user = await userModel.findOne({ email: task.assigneeEmail });
+      if (user) {
+        recipientId = user._id;
+      }
+    } catch (error) {
+      console.error("Error finding user by email for notification:", error);
+    }
+  }
+  
+  if (!recipientId) return;
 
   const message = `Task "${task.title}" has been updated from ${previousStatus} to ${task.status}`;
   const notification = await createNotification(
-    task.assignee,
+    recipientId,
     "task_updated",
     task._id,
     message,
@@ -62,18 +105,31 @@ const notifyTaskUpdated = async (io, task, previousStatus, updatedBy = "System")
   );
 
   if (notification) {
-    emitNotification(io, task.assignee, notification);
+    emitNotification(io, recipientId, notification);
   }
 
   return notification;
 };
 
 const notifyTaskCompleted = async (io, task, completedBy = "System") => {
-  if (!task.assignee) return;
+  let recipientId = task.assignee;
+  
+  if (!recipientId && task.assigneeEmail) {
+    try {
+      const user = await userModel.findOne({ email: task.assigneeEmail });
+      if (user) {
+        recipientId = user._id;
+      }
+    } catch (error) {
+      console.error("Error finding user by email for notification:", error);
+    }
+  }
+  
+  if (!recipientId) return;
 
   const message = `Task "${task.title}" has been marked as completed`;
   const notification = await createNotification(
-    task.assignee,
+    recipientId,
     "task_completed",
     task._id,
     message,
@@ -85,7 +141,7 @@ const notifyTaskCompleted = async (io, task, completedBy = "System") => {
   );
 
   if (notification) {
-    emitNotification(io, task.assignee, notification);
+    emitNotification(io, recipientId, notification);
   }
 
   return notification;
