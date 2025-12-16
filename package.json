@@ -23,5 +23,13 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.11"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/beingharisali/full-stack-tfm-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/beingharisali/full-stack-tfm-node/issues"
+  },
+  "homepage": "https://github.com/beingharisali/full-stack-tfm-node#readme"
 }

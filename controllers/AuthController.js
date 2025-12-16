@@ -33,10 +33,14 @@ register = async (req, res) => {
 
 login = async (req, res) => {
 	try {
-		const { email, password } = req.body;
+		const { email, password, role } = req.body;
 
 		const user = await User.findOne({ email });
 		if (!user) return res.status(404).json({ message: "User not found" });
+
+		if (role && user.role !== role) {
+			return res.status(401).json({ message: `Invalid role. You are registered as ${user.role}, not ${role}.` });
+		}
 
 		const isMatch = await bcrypt.compare(password, user.password);
 		if (!isMatch) return res.status(401).json({ message: "Invalid password" });
@@ -50,6 +54,7 @@ login = async (req, res) => {
 			message: "Login Successful",
 			token,
 			user: {
+				id: user._id,
 				firstName: user.firstName,
 				lastName: user.lastName,
 				email: user.email,
@@ -64,7 +69,6 @@ login = async (req, res) => {
 	}
 };
 
-// Get user profile
 getProfile = async (req, res) => {
 	try {
 		const user = await User.findById(req.user.id).select("-password");
@@ -77,18 +81,15 @@ getProfile = async (req, res) => {
 	}
 };
 
-// Update user profile
 updateProfile = async (req, res) => {
 	try {
 		const { firstName, lastName, email, password } = req.body;
 		
-		// Build user object
 		const userFields = {};
 		if (firstName) userFields.firstName = firstName;
 		if (lastName) userFields.lastName = lastName;
 		if (email) userFields.email = email;
 		
-		// If password is being updated, hash it
 		if (password) {
 			const salt = await bcrypt.genSalt(10);
 			userFields.password = await bcrypt.hash(password, salt);
@@ -99,7 +100,6 @@ updateProfile = async (req, res) => {
 			return res.status(404).json({ message: "User not found" });
 		}
 		
-		// Check if email is being changed and if it already exists
 		if (email && email !== user.email) {
 			const existingUser = await User.findOne({ email });
 			if (existingUser) {
@@ -120,15 +120,12 @@ updateProfile = async (req, res) => {
 	}
 };
 
-// Get all users (admin only)
 getAllUsers = async (req, res) => {
 	try {
-		// Only allow admin to access this endpoint
 		if (req.user.role !== "admin") {
 			return res.status(403).json({ message: "Access denied" });
 		}
 		
-		// Get all users except the current admin, and exclude passwords
 		const users = await User.find({ _id: { $ne: req.user.id } }).select("-password");
 		res.json({ users });
 	} catch (error) {
