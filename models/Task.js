@@ -38,6 +38,10 @@ const taskSchema = new mongoose.Schema(
     dueDate: {
       type: Date,
     },
+    workspace: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Workspace",
+    },
   },
   { timestamps: true }
 );

@@ -17,6 +17,7 @@ const createNotification = async (recipientId, type, taskId, message, metadata =
   }
 };
 
+
 const emitNotification = (io, userId, notification) => {
   if (io && userId) {
     io.to(userId.toString()).emit("notification", notification);

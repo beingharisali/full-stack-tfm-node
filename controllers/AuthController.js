@@ -102,8 +102,8 @@ updateProfile = async (req, res) => {
 		
 		if (email && email !== user.email) {
 			const existingUser = await User.findOne({ email });
-			if (existingUser) {
-				return res.status(400).json({ message: "Email already exists" });
+			if (existingUser && existingUser._id.toString() !== req.user.id) {
+				return res.status(400).json({ message: "Email already in use" });
 			}
 		}
 		
@@ -115,23 +115,54 @@ updateProfile = async (req, res) => {
 		
 		res.json({ user });
 	} catch (error) {
-		console.error(error.message);
 		res.status(500).json({ message: "Server error" });
 	}
 };
 
 getAllUsers = async (req, res) => {
 	try {
-		if (req.user.role !== "admin") {
-			return res.status(403).json({ message: "Access denied" });
-		}
-		
-		const users = await User.find({ _id: { $ne: req.user.id } }).select("-password");
+		const users = await User.find().select("-password");
 		res.json({ users });
 	} catch (error) {
-		console.error(error.message);
 		res.status(500).json({ message: "Server error" });
 	}
 };
 
-module.exports = { register, login, getProfile, updateProfile, getAllUsers };
+getUserByEmail = async (req, res) => {
+	try {
+		const { email } = req.query;
+		if (!email) {
+			return res.status(400).json({ message: "Email is required" });
+		}
+		
+		const user = await User.findOne({ email: email.toLowerCase() }).select("-password");
+		if (!user) {
+			return res.status(404).json({ message: "User not found" });
+		}
+		
+		res.json({ user });
+	} catch (error) {
+		res.status(500).json({ message: "Server error" });
+	}
+};
+
+getOnlineUsers = async (req, res) => {
+	try {
+		// This would typically integrate with your WebSocket or session management
+		// For now, we'll return all users as online for demonstration
+		const users = await User.find().select("-password");
+		res.json({ users });
+	} catch (error) {
+		res.status(500).json({ message: "Server error" });
+	}
+};
+
+module.exports = {
+	register,
+	login,
+	getProfile,
+	updateProfile,
+	getAllUsers,
+	getUserByEmail,
+	getOnlineUsers
+};
