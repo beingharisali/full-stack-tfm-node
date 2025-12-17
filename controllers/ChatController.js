@@ -54,6 +54,17 @@ const sendChatRequest = async (req, res) => {
         status: chatRequest.status,
         createdAt: chatRequest.createdAt,
       });
+      
+      io.emit("chatRequest", {
+        _id: chatRequest._id,
+        requester: chatRequest.requester,
+        requesterName: requesterName,
+        recipient: chatRequest.recipient,
+        recipientEmail: chatRequest.recipientEmail,
+        status: chatRequest.status,
+        createdAt: chatRequest.createdAt,
+      });
+      
       console.log('ChatRequest event emitted successfully');
     } else {
       console.log('IO instance not available');
@@ -95,6 +106,25 @@ const respondToChatRequest = async (req, res) => {
     chatRequest.status = status;
     await chatRequest.save();
     
+    const io = req.app.get('io');
+    if (io) {
+      io.to(chatRequest.requester.toString()).emit("chatRequestResponse", {
+        requestId: chatRequest._id,
+        status: chatRequest.status,
+        requesterId: chatRequest.requester,
+        responderId: responderId,
+        recipientId: chatRequest.recipient,
+      });
+      
+      io.to(chatRequest.recipient.toString()).emit("chatRequestResponse", {
+        requestId: chatRequest._id,
+        status: chatRequest.status,
+        requesterId: chatRequest.requester,
+        responderId: responderId,
+        recipientId: chatRequest.recipient,
+      });
+    }
+    
     if (status === "accepted") {
       try {
         const existingConnection = await chatConnectionModel.findOne({
@@ -107,12 +137,30 @@ const respondToChatRequest = async (req, res) => {
         if (!existingConnection) {
           const requester = await userModel.findById(chatRequest.requester);
           
-          await chatConnectionModel.create({
+          const connection = await chatConnectionModel.create({
             user1: chatRequest.requester,
             user2: chatRequest.recipient,
             user1Email: requester ? requester.email : "Unknown",
             user2Email: chatRequest.recipientEmail,
           });
+          
+          if (io) {
+            io.to(chatRequest.requester.toString()).emit("newConnection", {
+              connectionId: connection._id,
+              user1Id: connection.user1,
+              user2Id: connection.user2,
+              user1Email: connection.user1Email,
+              user2Email: connection.user2Email,
+            });
+            
+            io.to(chatRequest.recipient.toString()).emit("newConnection", {
+              connectionId: connection._id,
+              user1Id: connection.user1,
+              user2Id: connection.user2,
+              user1Email: connection.user1Email,
+              user2Email: connection.user2Email,
+            });
+          }
         }
       } catch (connectionError) {
         console.error("Error creating chat connection:", connectionError);
