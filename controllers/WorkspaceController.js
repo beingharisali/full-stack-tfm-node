@@ -13,10 +13,13 @@ const createWorkspace = async (req, res) => {
 
     const workspaceData = {
       ...req.body,
-      createdBy: req.user.id
+      createdBy: req.user.id,
+      members: [req.user.id]  
     };
 
+    console.log("Creating workspace with data:", workspaceData);
     const workspace = await Workspace.create(workspaceData);
+    console.log("Created workspace:", workspace);
 
     res.status(201).json({
       success: true,
@@ -24,6 +27,7 @@ const createWorkspace = async (req, res) => {
       workspace,
     });
   } catch (error) {
+    console.error("Error creating workspace:", error);
     res.status(400).json({ success: false, error: error.message });
   }
 };
@@ -39,7 +43,6 @@ const getWorkspaceById = async (req, res) => {
       });
     }
 
-    // Check if user has access to this workspace
     const isMember = workspace.members.some(member => member._id.toString() === req.user.id);
     const isCreator = workspace.createdBy.toString() === req.user.id;
     
@@ -88,6 +91,7 @@ const updateWorkspace = async (req, res) => {
 
 const inviteMembers = async (req, res) => {
   try {
+    console.log("Invite members request:", req.body, req.params.id, req.user.id);
     if (req.user.role !== "admin") {
       return res.status(403).json({ 
         success: false, 
@@ -104,17 +108,22 @@ const inviteMembers = async (req, res) => {
         .json({ success: false, message: "Workspace not found" });
     }
 
+    console.log("Inviting members to workspace:", workspace.name, members);
     const invitations = [];
     for (const memberId of members) {
       const user = await User.findById(memberId);
       if (user) {
+        console.log("Processing user:", user.email, user._id);
         const existingInvitation = await WorkspaceInvitation.findOne({
           workspace: workspace._id,
           invitedUser: user._id,
           status: "pending"
         });
 
-        if (!existingInvitation) {
+        if (existingInvitation) {
+          console.log("Existing invitation found for user:", user.email);
+        } else {
+          console.log("Creating new invitation for user:", user.email);
           const invitation = await WorkspaceInvitation.create({
             workspace: workspace._id,
             invitedUser: user._id,
@@ -128,22 +137,27 @@ const inviteMembers = async (req, res) => {
       }
     }
 
+    console.log("Created invitations:", invitations);
     res.status(200).json({
       success: true,
       message: "Invitations sent successfully",
       invitations,
     });
   } catch (error) {
+    console.error("Error inviting members:", error);
     res.status(400).json({ success: false, error: error.message });
   }
 };
 
 const getWorkspaceInvitations = async (req, res) => {
   try {
+    console.log("Fetching invitations for user:", req.user.id);
     const invitations = await WorkspaceInvitation.find({
       invitedUser: req.user.id,
       status: "pending"
     }).populate("workspace", "name").populate("invitedBy", "firstName lastName email");
+    
+    console.log("Found invitations:", invitations);
 
     res.status(200).json({
       success: true,
@@ -151,6 +165,7 @@ const getWorkspaceInvitations = async (req, res) => {
       invitations,
     });
   } catch (error) {
+    console.error("Error fetching invitations:", error);
     res.status(400).json({ success: false, error: error.message });
   }
 };
@@ -217,11 +232,9 @@ const leaveWorkspace = async (req, res) => {
       });
     }
 
-    // Check if user is a member of the workspace
     const isMember = workspace.members.some(member => member.toString() === userId);
     const isCreator = workspace.createdBy.toString() === userId;
     
-    // Creator cannot leave their own workspace
     if (isCreator) {
       return res.status(400).json({ 
         success: false, 
@@ -236,7 +249,6 @@ const leaveWorkspace = async (req, res) => {
       });
     }
 
-    // Remove user from workspace members
     workspace.members = workspace.members.filter(member => member.toString() !== userId);
     await workspace.save();
 
@@ -251,12 +263,15 @@ const leaveWorkspace = async (req, res) => {
 
 const getUserWorkspaces = async (req, res) => {
   try {
+    console.log("Fetching workspaces for user:", req.user.id);
     const workspaces = await Workspace.find({
       $or: [
         { members: req.user.id },
         { createdBy: req.user.id }
       ]
     }).populate("members", "firstName lastName email role");
+    
+    console.log("Found workspaces:", workspaces);
 
     res.status(200).json({
       success: true,
@@ -264,6 +279,7 @@ const getUserWorkspaces = async (req, res) => {
       workspaces,
     });
   } catch (error) {
+    console.error("Error fetching user workspaces:", error);
     res.status(400).json({ success: false, error: error.message });
   }
 };

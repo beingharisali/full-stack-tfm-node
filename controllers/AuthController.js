@@ -22,7 +22,15 @@ register = async (req, res) => {
 			role,
 		});
 
-		res.status(201).json({ success: true, message: "User Registered", user });
+		const userWithoutPassword = {
+			id: user._id,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			email: user.email,
+			role: user.role
+		};
+
+		res.status(201).json({ success: true, message: "User Registered", user: userWithoutPassword });
 	} catch (error) {
 		res.status(400).json({
 			success: false,
@@ -49,18 +57,19 @@ login = async (req, res) => {
 			expiresIn: "7d",
 		});
 
+		const userWithoutPassword = {
+			id: user._id,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			email: user.email,
+			role: user.role
+		};
+
 		res.json({
 			success: true,
 			message: "Login Successful",
 			token,
-			user: {
-				id: user._id,
-				firstName: user.firstName,
-				lastName: user.lastName,
-				email: user.email,
-				password: user.password,
-				role: user.role,
-			},
+			user: userWithoutPassword
 		});
 	} catch (error) {
 		res.status(400).json({
@@ -148,8 +157,7 @@ getUserByEmail = async (req, res) => {
 
 getOnlineUsers = async (req, res) => {
 	try {
-		// This would typically integrate with your WebSocket or session management
-		// For now, we'll return all users as online for demonstration
+		
 		const users = await User.find().select("-password");
 		res.json({ users });
 	} catch (error) {
