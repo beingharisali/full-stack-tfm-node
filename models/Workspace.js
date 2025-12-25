@@ -4,8 +4,14 @@ const workspaceSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Workspace name is required"],
-      trim: true,
+      required: true,
+    },
+    description: String,
+
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
     },
 
     members: [
@@ -14,16 +20,8 @@ const workspaceSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
-
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
   },
   { timestamps: true }
 );
 
-const workspaceModel = mongoose.model("Workspace", workspaceSchema);
-
-module.exports = workspaceModel
+module.exports = mongoose.model("Workspace", workspaceSchema);

@@ -1,6 +1,6 @@
 const Workspace = require("../models/Workspace");
 const User = require("../models/User");
-const WorkspaceInvitation = require("../models/WorkspaceInvitation");
+const { createNotification } = require("../services/notificationService");
 
 const createWorkspace = async (req, res) => {
   try {
@@ -94,142 +94,8 @@ const updateWorkspace = async (req, res) => {
   }
 };
 
-const inviteMembers = async (req, res) => {
-  try {
-    console.log(
-      "Invite members request:",
-      req.body,
-      req.params.id,
-      req.user.id
-    );
-    if (req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Only admins can invite members to workspaces",
-      });
-    }
 
-    const { members } = req.body;
-    const workspace = await Workspace.findById(req.params.id);
 
-    if (!workspace) {
-      return res
-        .status(404)
-        .json({ success: false, message: "Workspace not found" });
-    }
-
-    console.log("Inviting members to workspace:", workspace.name, members);
-    const invitations = [];
-    for (const memberId of members) {
-      const user = await User.findById(memberId);
-      if (user) {
-        console.log("Processing user:", user.email, user._id);
-        const existingInvitation = await WorkspaceInvitation.findOne({
-          workspace: workspace._id,
-          invitedUser: user._id,
-          status: "pending",
-        });
-
-        if (existingInvitation) {
-          console.log("Existing invitation found for user:", user.email);
-        } else {
-          console.log("Creating new invitation for user:", user.email);
-          const invitation = await WorkspaceInvitation.create({
-            workspace: workspace._id,
-            invitedUser: user._id,
-            invitedByEmail: user.email,
-            invitedUserName: `${user.firstName} ${user.lastName}`,
-            workspaceName: workspace.name,
-            invitedBy: req.user.id,
-          });
-          invitations.push(invitation);
-        }
-      }
-    }
-
-    console.log("Created invitations:", invitations);
-    res.status(200).json({
-      success: true,
-      message: "Invitations sent successfully",
-      invitations,
-    });
-  } catch (error) {
-    console.error("Error inviting members:", error);
-    res.status(400).json({ success: false, error: error.message });
-  }
-};
-
-const getWorkspaceInvitations = async (req, res) => {
-  try {
-    console.log("Fetching invitations for user:", req.user.id);
-    const invitations = await WorkspaceInvitation.find({
-      invitedUser: req.user.id,
-      status: "pending",
-    })
-      .populate("workspace", "name")
-      .populate("invitedBy", "firstName lastName email");
-
-    console.log("Found invitations:", invitations);
-
-    res.status(200).json({
-      success: true,
-      count: invitations.length,
-      invitations,
-    });
-  } catch (error) {
-    console.error("Error fetching invitations:", error);
-    res.status(400).json({ success: false, error: error.message });
-  }
-};
-
-const respondToInvitation = async (req, res) => {
-  try {
-    const { invitationId, response } = req.body;
-
-    const invitation = await WorkspaceInvitation.findById(invitationId);
-    if (!invitation) {
-      return res.status(404).json({
-        success: false,
-        message: "Invitation not found",
-      });
-    }
-
-    if (invitation.invitedUser.toString() !== req.user.id) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not authorized to respond to this invitation",
-      });
-    }
-
-    if (invitation.status !== "pending") {
-      return res.status(400).json({
-        success: false,
-        message: "This invitation has already been responded to",
-      });
-    }
-
-    invitation.status = response;
-    await invitation.save();
-
-    if (response === "accepted") {
-      const workspace = await Workspace.findById(invitation.workspace);
-      if (workspace) {
-        if (!workspace.members.includes(req.user.id)) {
-          workspace.members.push(req.user.id);
-          await workspace.save();
-        }
-      }
-    }
-
-    res.status(200).json({
-      success: true,
-      message: `Invitation ${response}`,
-      invitation,
-    });
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
-  }
-};
 
 const leaveWorkspace = async (req, res) => {
   try {
@@ -277,6 +143,142 @@ const leaveWorkspace = async (req, res) => {
   }
 };
 
+const deleteWorkspace = async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admins can delete workspaces",
+      });
+    }
+    
+    const workspaceId = req.params.id;
+    
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: "Workspace not found",
+      });
+    }
+    
+    // Delete the workspace
+    await Workspace.findByIdAndDelete(workspaceId);
+    
+    res.status(200).json({
+      success: true,
+      message: "Workspace deleted successfully",
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
+const addMembers = async (req, res) => {
+  try {
+    console.log(
+      "Add members to workspace request:",
+      req.body,
+      req.params.id,
+      req.user.id
+    );
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admins can add members to workspaces",
+      });
+    }
+
+    const { members } = req.body;
+    const workspace = await Workspace.findById(req.params.id);
+
+    if (!workspace) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Workspace not found" });
+    }
+
+    console.log("Adding members to workspace:", workspace.name, members);
+    
+    // Get the io instance from app to emit notifications
+    const io = req.app.get('io');
+    
+    // Track added users for admin notification
+    const addedUsers = [];
+    
+    for (const memberId of members) {
+      const user = await User.findById(memberId);
+      if (user) {
+        console.log("Processing user:", user.email, user._id);
+        
+        // Check if user is already a member
+        if (!workspace.members.includes(user._id)) {
+          // Add user directly to workspace
+          workspace.members.push(user._id);
+          
+          // Create and emit notification to inform user they were added to workspace
+          try {
+            const userNotification = await createNotification(
+              user._id,
+              "workspace_added",
+              null,
+              `Admin ${req.user.firstName} ${req.user.lastName} has added you to workspace: ${workspace.name}. You can now access the workspace.`,
+              {
+                workspaceName: workspace.name,
+                workspaceId: workspace._id,
+                addedBy: req.user.firstName + " " + req.user.lastName,
+              }
+            );
+            
+            if (userNotification && io) {
+              io.to(user._id.toString()).emit("notification", userNotification);
+            }
+            
+            addedUsers.push(user);
+          } catch (notificationError) {
+            console.error("Error creating notification for workspace addition:", notificationError);
+          }
+        }
+      }
+    }
+    
+    // Save the workspace after all members are added
+    await workspace.save();
+    
+    // Create and emit notification to inform admin that users were added
+    if (addedUsers.length > 0 && io) {
+      try {
+        const userNames = addedUsers.map(u => `${u.firstName} ${u.lastName}`).join(', ');
+        const adminNotification = await createNotification(
+          req.user.id,
+          "workspace_updated",
+          null,
+          `You have successfully added ${userNames} to workspace: ${workspace.name}.`,
+          {
+            workspaceName: workspace.name,
+            workspaceId: workspace._id,
+            addedUsers: addedUsers.map(u => ({ id: u._id, name: `${u.firstName} ${u.lastName}` })),
+          }
+        );
+        
+        if (adminNotification && io) {
+          io.to(req.user.id.toString()).emit("notification", adminNotification);
+        }
+      } catch (adminNotificationError) {
+        console.error("Error creating admin notification for workspace addition:", adminNotificationError);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Members added to workspace successfully",
+    });
+  } catch (error) {
+    console.error("Error adding members to workspace:", error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+};
+
 const getUserWorkspaces = async (req, res) => {
   try {
     console.log(
@@ -318,9 +320,8 @@ module.exports = {
   createWorkspace,
   getWorkspaceById,
   updateWorkspace,
-  inviteMembers,
-  getWorkspaceInvitations,
-  respondToInvitation,
+  addMembers,
   leaveWorkspace,
+  deleteWorkspace,
   getUserWorkspaces,
 };

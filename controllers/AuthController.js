@@ -144,10 +144,18 @@ getUserByEmail = async (req, res) => {
 			return res.status(400).json({ message: "Email is required" });
 		}
 		
-		const user = await User.findOne({ email: email.toLowerCase() }).select("-password");
-		if (!user) {
+		const dbUser = await User.findOne({ email: email.toLowerCase() }).select("-password");
+		if (!dbUser) {
 			return res.status(404).json({ message: "User not found" });
 		}
+		
+		const user = {
+      id: dbUser._id,
+      firstName: dbUser.firstName,
+      lastName: dbUser.lastName,
+      email: dbUser.email,
+      role: dbUser.role
+    };
 		
 		res.json({ user });
 	} catch (error) {
@@ -157,8 +165,15 @@ getUserByEmail = async (req, res) => {
 
 getOnlineUsers = async (req, res) => {
 	try {
+		// Get the list of online users from the socket server
+		const io = req.app.get('io');
+		const onlineUserIds = Array.from(io.onlineUsers?.keys()) || [];
 		
-		const users = await User.find().select("-password");
+		// Get user details for online users
+		const users = await User.find({
+			_id: { $in: onlineUserIds }
+		}).select("-password");
+		
 		res.json({ users });
 	} catch (error) {
 		res.status(500).json({ message: "Server error" });
