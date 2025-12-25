@@ -1,21 +1,21 @@
 const express = require("express");
+const router = express.Router();
+const protect = require("../middlewares/authMiddleware");
+
 const {
-  sendChatRequest,
-  respondToChatRequest,
-  getUserChatRequests,
-  sendPrivateMessage,
-  getChatMessages,
-  deleteMessage
+  sendMessage,
+  getMessages,
+  editMessage,
+  deleteMessage,
+  searchMessages,
+  getUnreadCount,
 } = require("../controllers/ChatController");
 
-const router = express.Router();
-
-router.post("/request", sendChatRequest);
-router.post("/request/respond", respondToChatRequest);
-router.get("/requests/:userId", getUserChatRequests);
-
-router.post("/message", sendPrivateMessage);
-router.get("/messages/:user1Id/:user2Id", getChatMessages);
-router.delete("/message/:messageId", deleteMessage);
+router.post("/send", protect, sendMessage);
+router.get("/unread-count", protect, getUnreadCount);
+router.get("/search", protect, searchMessages);
+router.get("/:userId", protect, getMessages);
+router.put("/:id", protect, editMessage);
+router.delete("/:id", protect, deleteMessage);
 
 module.exports = router;

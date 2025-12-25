@@ -9,13 +9,13 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["task_assigned", "task_updated", "task_completed"],
+      enum: ["task_assigned", "task_updated", "task_completed", "workspace_added"],
       required: true,
     },
     task: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Task",
-      required: true,
+      required: false,
     },
     message: {
       type: String,

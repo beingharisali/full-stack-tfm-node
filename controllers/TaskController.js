@@ -16,8 +16,8 @@ createTask = async (req, res) => {
     const task = await taskModel.create(taskData);
 
     const io = req.app.get("io");
-    if (task.assignee && io) {
-      await notifyTaskAssigned(io, task, req.user?.name || "Admin");
+    if (io) {
+      await notifyTaskCreated(io, task, req.user?.firstName || req.user?.name || "Admin");
     }
 
     res.status(201).json({ success: true, message: "Task Created", task });
