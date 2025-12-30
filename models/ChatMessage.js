@@ -23,7 +23,7 @@ const chatMessageSchema = new mongoose.Schema(
     },
     isRead: {
       type: Boolean,
-      default: false, // ✔✔ Seen indicator
+      default: false, 
     },
     isEdited: {
       type: Boolean,

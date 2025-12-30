@@ -11,7 +11,6 @@ const createNotification = async (recipientId, type, taskId, message, metadata =
       metadata,
     };
     
-    // Only add task field if taskId is provided
     if (taskId) {
       notificationData.task = taskId;
     }
@@ -32,7 +31,6 @@ const emitNotification = (io, userId, notification) => {
 };
 
 const notifyTaskCreated = async (io, task, createdBy = "System") => {
-  // If the task is assigned to someone, notify the assignee
   if (task.assignee) {
     const message = `A new task "${task.title}" has been created and assigned to you by ${createdBy}`;
     const notification = await createNotification(
@@ -53,7 +51,6 @@ const notifyTaskCreated = async (io, task, createdBy = "System") => {
     return notification;
   }
   
-  // If the task is assigned by email, find the user and notify them
   if (task.assigneeEmail) {
     try {
       const user = await userModel.findOne({ email: task.assigneeEmail });
@@ -81,12 +78,10 @@ const notifyTaskCreated = async (io, task, createdBy = "System") => {
     }
   }
   
-  // If the task is in a workspace, notify workspace admins/creators
   if (task.workspace) {
     try {
       const workspace = await workspaceModel.findById(task.workspace);
       if (workspace) {
-        // Notify the workspace creator/admin
         const adminNotification = await createNotification(
           workspace.createdBy,
           "task_created",
@@ -103,7 +98,6 @@ const notifyTaskCreated = async (io, task, createdBy = "System") => {
           emitNotification(io, workspace.createdBy, adminNotification);
         }
         
-        // Notify other workspace members (admins) if they exist
         for (const memberId of workspace.members) {
           if (memberId.toString() !== workspace.createdBy.toString()) {
             const memberNotification = await createNotification(

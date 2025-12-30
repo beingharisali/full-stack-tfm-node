@@ -42,10 +42,8 @@ app.use("/api/chat", chatRoutes);
 app.use(notFound);
 app.use(globalErrorHandler);
 
-/* ================= SOCKET ================= */
 
 const onlineUsers = new Map();
-// Make onlineUsers available globally to the app
 io.onlineUsers = onlineUsers;
 
 io.on("connection", (socket) => {
@@ -53,7 +51,6 @@ io.on("connection", (socket) => {
 
   socket.on("join", (userId) => {
     onlineUsers.set(userId, socket.id);
-    // Emit updated list of online users to all clients
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
     socket.join(userId);
   });
@@ -64,7 +61,6 @@ io.on("connection", (socket) => {
   });
 
   socket.on("privateMessage", (message) => {
-    // Send private message to specific user
     socket.to(message.recipientId).emit("privateMessage", message);
   });
 
@@ -79,7 +75,6 @@ io.on("connection", (socket) => {
         break;
       }
     }
-    // Emit updated list of online users to all clients
     io.emit("onlineUsers", Array.from(onlineUsers.keys()));
   });
 });

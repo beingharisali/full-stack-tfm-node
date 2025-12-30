@@ -1,16 +1,12 @@
 const ChatMessage = require("../models/ChatMessage");
 const Workspace = require("../models/Workspace");
 
-/* ================= PERMISSION ================= */
 
 const hasPermission = async (u1, u2) => {
-  // Allow any authenticated users to chat with each other
-  // In a real implementation, you might want to add additional checks
-  // such as if users are connected in some way
+
   return true;
 };
 
-/* ================= SEND ================= */
 
 exports.sendMessage = async (req, res) => {
   const { receiverId, message } = req.body;
@@ -33,7 +29,6 @@ exports.sendMessage = async (req, res) => {
   res.status(201).json(chat);
 };
 
-/* ================= GET ================= */
 
 exports.getMessages = async (req, res) => {
   const { userId } = req.params;
@@ -54,7 +49,6 @@ exports.getMessages = async (req, res) => {
     ],
   }).sort({ createdAt: 1 });
 
-  // ✔✔ Seen
   await ChatMessage.updateMany(
     {
       sender: userId,
@@ -67,7 +61,6 @@ exports.getMessages = async (req, res) => {
   res.json(chats);
 };
 
-/* ================= EDIT ================= */
 
 exports.editMessage = async (req, res) => {
   const chat = await ChatMessage.findById(req.params.id);
@@ -83,7 +76,6 @@ exports.editMessage = async (req, res) => {
   res.json(chat);
 };
 
-/* ================= DELETE ================= */
 
 exports.deleteMessage = async (req, res) => {
   const chat = await ChatMessage.findById(req.params.id);
@@ -96,7 +88,6 @@ exports.deleteMessage = async (req, res) => {
   res.json({ message: "Message deleted" });
 };
 
-/* ================= SEARCH ================= */
 
 exports.searchMessages = async (req, res) => {
   const messages = await ChatMessage.find({
@@ -107,7 +98,6 @@ exports.searchMessages = async (req, res) => {
   res.json(messages);
 };
 
-/* ================= UNREAD ================= */
 
 exports.getUnreadCount = async (req, res) => {
   const count = await ChatMessage.countDocuments({
