@@ -162,7 +162,6 @@ const deleteWorkspace = async (req, res) => {
       });
     }
     
-    // Delete the workspace
     await Workspace.findByIdAndDelete(workspaceId);
     
     res.status(200).json({
@@ -200,10 +199,8 @@ const addMembers = async (req, res) => {
 
     console.log("Adding members to workspace:", workspace.name, members);
     
-    // Get the io instance from app to emit notifications
     const io = req.app.get('io');
     
-    // Track added users for admin notification
     const addedUsers = [];
     
     for (const memberId of members) {
@@ -211,12 +208,9 @@ const addMembers = async (req, res) => {
       if (user) {
         console.log("Processing user:", user.email, user._id);
         
-        // Check if user is already a member
         if (!workspace.members.includes(user._id)) {
-          // Add user directly to workspace
           workspace.members.push(user._id);
           
-          // Create and emit notification to inform user they were added to workspace
           try {
             const userNotification = await createNotification(
               user._id,
@@ -242,10 +236,8 @@ const addMembers = async (req, res) => {
       }
     }
     
-    // Save the workspace after all members are added
     await workspace.save();
     
-    // Create and emit notification to inform admin that users were added
     if (addedUsers.length > 0 && io) {
       try {
         const userNames = addedUsers.map(u => `${u.firstName} ${u.lastName}`).join(', ');

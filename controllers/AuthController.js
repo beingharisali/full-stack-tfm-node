@@ -165,11 +165,9 @@ getUserByEmail = async (req, res) => {
 
 getOnlineUsers = async (req, res) => {
 	try {
-		// Get the list of online users from the socket server
 		const io = req.app.get('io');
 		const onlineUserIds = Array.from(io.onlineUsers?.keys()) || [];
 		
-		// Get user details for online users
 		const users = await User.find({
 			_id: { $in: onlineUserIds }
 		}).select("-password");
